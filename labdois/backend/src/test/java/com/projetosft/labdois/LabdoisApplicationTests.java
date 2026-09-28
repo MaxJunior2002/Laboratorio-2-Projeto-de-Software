@@ -1,0 +1,13 @@
+package com.projetosft.labdois;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class LabdoisApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+
+}
