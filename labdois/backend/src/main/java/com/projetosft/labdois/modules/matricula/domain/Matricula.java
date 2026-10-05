@@ -2,14 +2,14 @@ package com.projetosft.labdois.modules.matricula.domain;
 
 import com.projetosft.labdois.modules.aluno.domain.Aluno;
 import com.projetosft.labdois.modules.disciplina.domain.Disciplina;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 import java.time.LocalDate;
@@ -21,6 +21,9 @@ import java.util.UUID;
 @Table(name = "matriculas")
 public class Matricula {
 
+    public static final int MAX_OBRIGATORIAS = 4;
+    public static final int MAX_OPTATIVAS = 2;
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -29,20 +32,11 @@ public class Matricula {
 
     private LocalDate data;
 
-    private int totalObrigatorias = 4;
-
-    private int totalOptativas = 2;
-
     @ManyToOne(optional = false)
     private Aluno aluno;
 
-    @ManyToMany
-    @JoinTable(
-            name = "matricula_disciplinas",
-            joinColumns = @JoinColumn(name = "matricula_id"),
-            inverseJoinColumns = @JoinColumn(name = "disciplina_id")
-    )
-    private List<Disciplina> disciplinas = new ArrayList<>();
+    @OneToMany(mappedBy = "matricula", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private List<MatriculaDisciplina> disciplinas = new ArrayList<>();
 
     protected Matricula() {
     }
@@ -51,6 +45,10 @@ public class Matricula {
         this.periodo = periodo;
         this.data = data;
         this.aluno = aluno;
+    }
+
+    public void adicionarDisciplina(Disciplina disciplina, TipoDisciplinaMatricula tipo) {
+        disciplinas.add(new MatriculaDisciplina(this, disciplina, tipo));
     }
 
     public void confirmar() {
@@ -84,11 +82,15 @@ public class Matricula {
     }
 
     public int getTotalObrigatorias() {
-        return totalObrigatorias;
+        return (int) disciplinas.stream()
+                .filter(item -> item.getTipo() == TipoDisciplinaMatricula.OBRIGATORIA)
+                .count();
     }
 
     public int getTotalOptativas() {
-        return totalOptativas;
+        return (int) disciplinas.stream()
+                .filter(item -> item.getTipo() == TipoDisciplinaMatricula.OPTATIVA)
+                .count();
     }
 
     public Aluno getAluno() {
@@ -99,7 +101,7 @@ public class Matricula {
         this.aluno = aluno;
     }
 
-    public List<Disciplina> getDisciplinas() {
+    public List<MatriculaDisciplina> getDisciplinas() {
         return disciplinas;
     }
 }

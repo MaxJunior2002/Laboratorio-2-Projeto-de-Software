@@ -2,6 +2,7 @@ package com.projetosft.labdois.modules.disciplina.domain;
 
 import com.projetosft.labdois.modules.curso.domain.Curso;
 import com.projetosft.labdois.modules.matricula.domain.Matricula;
+import com.projetosft.labdois.modules.matricula.domain.MatriculaDisciplina;
 import com.projetosft.labdois.modules.professor.domain.Professor;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -9,8 +10,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 import java.util.ArrayList;
@@ -42,8 +43,8 @@ public class Disciplina {
     @ManyToOne
     private Professor professor;
 
-    @ManyToMany(mappedBy = "disciplinas")
-    private List<Matricula> matriculas = new ArrayList<>();
+    @OneToMany(mappedBy = "disciplina")
+    private List<MatriculaDisciplina> matriculas = new ArrayList<>();
 
     protected Disciplina() {
     }
@@ -57,6 +58,7 @@ public class Disciplina {
 
     public boolean verificarAtivacao() {
         long alunosInscritos = matriculas.stream()
+                .map(MatriculaDisciplina::getMatricula)
                 .map(Matricula::getAluno)
                 .distinct()
                 .count();
@@ -123,7 +125,7 @@ public class Disciplina {
         this.professor = professor;
     }
 
-    public List<Matricula> getMatriculas() {
+    public List<MatriculaDisciplina> getMatriculas() {
         return matriculas;
     }
 }

@@ -9,6 +9,7 @@ import com.projetosft.labdois.modules.curso.repository.CursoRepository;
 import com.projetosft.labdois.modules.disciplina.domain.Disciplina;
 import com.projetosft.labdois.modules.disciplina.repository.DisciplinaRepository;
 import com.projetosft.labdois.modules.matricula.domain.Matricula;
+import com.projetosft.labdois.modules.matricula.domain.TipoDisciplinaMatricula;
 import com.projetosft.labdois.modules.matricula.repository.MatriculaRepository;
 import com.projetosft.labdois.modules.professor.domain.Professor;
 import com.projetosft.labdois.modules.professor.repository.ProfessorRepository;
@@ -122,7 +123,7 @@ class DisciplinaControllerTest {
         Aluno aluno = alunoRepository.save(new Aluno("Caio Silva", "caio@example.com", "senha", "2025001"));
         Disciplina disciplina = disciplinaRepository.save(new Disciplina("Programação", 60, curso, professor));
         Matricula matricula = new Matricula("2026.1", LocalDate.now(), aluno);
-        matricula.getDisciplinas().add(disciplina);
+        matricula.adicionarDisciplina(disciplina, TipoDisciplinaMatricula.OBRIGATORIA);
         matriculaRepository.save(matricula);
 
         mockMvc.perform(delete("/api/disciplinas/{id}", disciplina.getId()))
