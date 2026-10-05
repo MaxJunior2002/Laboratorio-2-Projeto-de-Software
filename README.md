@@ -41,7 +41,7 @@ Desenvolver um sistema que permita:
 - Como professor, quero visualizar os alunos matriculados em cada disciplina para acompanhar minha turma.
 
 ## Critérios de aceitação
-- O sistema deve permitir login com usuário e senha válidos.
+- O sistema deve permitir login de alunos e professores cadastrados com email e senha válidos.
 - A secretaria deve conseguir manter o currículo do semestre com disciplinas, professores e cursos.
 - O aluno deve conseguir se matricular em até 4 disciplinas obrigatórias e 2 optativas.
 - O aluno deve conseguir cancelar matrículas durante o período permitido.
