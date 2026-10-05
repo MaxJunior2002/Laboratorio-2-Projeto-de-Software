@@ -1,6 +1,7 @@
 package com.projetosft.labdois.modules.auth.dto;
 
-import com.projetosft.labdois.modules.usuario.domain.Usuario;
+import com.projetosft.labdois.modules.aluno.domain.Aluno;
+import com.projetosft.labdois.modules.professor.domain.Professor;
 
 import java.util.UUID;
 
@@ -21,13 +22,14 @@ public class LoginResponse {
         this.perfil = perfil;
     }
 
-    public static LoginResponse from(Usuario usuario) {
+    public static LoginResponse from(Aluno aluno) {
         return new LoginResponse(
-                usuario.getId(),
-                usuario.getNome(),
-                usuario.getEmail(),
-                usuario.getClass().getSimpleName()
-        );
+                aluno.getId(), aluno.getNome(), aluno.getEmail(), "Aluno");
+    }
+
+    public static LoginResponse from(Professor professor) {
+        return new LoginResponse(
+                professor.getId(), professor.getNome(), professor.getEmail(), "Professor");
     }
 
     public UUID getId() {
