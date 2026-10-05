@@ -17,4 +17,8 @@ public interface DisciplinaRepository extends JpaRepository<Disciplina, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select d from Disciplina d where d.id = :id")
     Optional<Disciplina> findLockedById(@Param("id") UUID id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select d from Disciplina d order by d.id")
+    java.util.List<Disciplina> findAllLocked();
 }

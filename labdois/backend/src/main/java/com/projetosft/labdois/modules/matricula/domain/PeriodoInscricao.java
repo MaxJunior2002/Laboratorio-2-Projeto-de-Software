@@ -27,6 +27,9 @@ public class PeriodoInscricao {
     @Column(nullable = false)
     private LocalDate fim;
 
+    @Column(nullable = false)
+    private boolean encerrado;
+
     protected PeriodoInscricao() {
     }
 
@@ -52,12 +55,29 @@ public class PeriodoInscricao {
         return fim;
     }
 
+    public boolean isEncerrado() {
+        return encerrado;
+    }
+
     public void atualizarDatas(LocalDate inicio, LocalDate fim) {
+        if (encerrado) {
+            throw new IllegalStateException("O período de inscrição já foi encerrado.");
+        }
         this.inicio = inicio;
         this.fim = fim;
     }
 
+    public void encerrar(LocalDate data) {
+        if (encerrado) {
+            throw new IllegalStateException("O período de inscrição já foi encerrado.");
+        }
+        if (!data.isAfter(fim)) {
+            throw new IllegalStateException("O período só pode ser encerrado após a data final.");
+        }
+        encerrado = true;
+    }
+
     public boolean estaAbertoEm(LocalDate data) {
-        return !data.isBefore(inicio) && !data.isAfter(fim);
+        return !encerrado && !data.isBefore(inicio) && !data.isAfter(fim);
     }
 }

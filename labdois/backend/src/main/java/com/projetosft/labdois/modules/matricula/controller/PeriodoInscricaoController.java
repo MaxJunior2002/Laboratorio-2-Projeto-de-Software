@@ -3,6 +3,7 @@ package com.projetosft.labdois.modules.matricula.controller;
 import com.projetosft.labdois.modules.matricula.domain.PeriodoInscricao;
 import com.projetosft.labdois.modules.matricula.dto.PeriodoInscricaoRequest;
 import com.projetosft.labdois.modules.matricula.dto.PeriodoInscricaoResponse;
+import com.projetosft.labdois.modules.matricula.dto.EncerramentoPeriodoResponse;
 import com.projetosft.labdois.modules.matricula.service.PeriodoInscricaoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/periodos-inscricao")
@@ -55,5 +57,10 @@ public class PeriodoInscricaoController {
     @GetMapping("/{periodo}")
     public PeriodoInscricaoResponse buscar(@PathVariable String periodo) {
         return PeriodoInscricaoResponse.from(periodoInscricaoService.buscar(periodo));
+    }
+
+    @PostMapping("/{periodo}/encerrar")
+    public EncerramentoPeriodoResponse encerrar(@PathVariable String periodo) {
+        return EncerramentoPeriodoResponse.from(periodoInscricaoService.encerrar(periodo, LocalDate.now()));
     }
 }

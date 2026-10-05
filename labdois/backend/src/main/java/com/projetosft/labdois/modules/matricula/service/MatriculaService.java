@@ -89,7 +89,8 @@ public class MatriculaService {
 
         for (UUID disciplinaId : idsOrdenados) {
             Disciplina disciplina = disciplinas.get(disciplinaId);
-            if (disciplina.getStatus() != StatusDisciplina.ABERTA) {
+            if (disciplina.getStatus() != StatusDisciplina.ABERTA
+                    && disciplina.getStatus() != StatusDisciplina.ATIVA) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
                         "A disciplina não está recebendo matrículas: " + disciplina.getNome());
             }
