@@ -9,6 +9,8 @@ import com.projetosft.labdois.modules.disciplina.domain.StatusDisciplina;
 import com.projetosft.labdois.modules.disciplina.repository.DisciplinaRepository;
 import com.projetosft.labdois.modules.matricula.repository.MatriculaDisciplinaRepository;
 import com.projetosft.labdois.modules.matricula.repository.MatriculaRepository;
+import com.projetosft.labdois.modules.matricula.domain.PeriodoInscricao;
+import com.projetosft.labdois.modules.matricula.repository.PeriodoInscricaoRepository;
 import com.projetosft.labdois.modules.professor.domain.Professor;
 import com.projetosft.labdois.modules.professor.repository.ProfessorRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDate;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -52,6 +55,9 @@ class MatriculaControllerTest {
     @Autowired
     private MatriculaDisciplinaRepository matriculaDisciplinaRepository;
 
+    @Autowired
+    private PeriodoInscricaoRepository periodoInscricaoRepository;
+
     private Aluno aluno;
     private Disciplina disciplina1;
     private Disciplina disciplina2;
@@ -60,6 +66,7 @@ class MatriculaControllerTest {
     void prepararDados() {
         matriculaRepository.deleteAll();
         matriculaDisciplinaRepository.deleteAll();
+        periodoInscricaoRepository.deleteAll();
         disciplinaRepository.deleteAll();
         alunoRepository.deleteAll();
         professorRepository.deleteAll();
@@ -71,6 +78,8 @@ class MatriculaControllerTest {
                 new Professor("Carlos Lima", "carlos@example.com", "senha", "P-1001"));
         disciplina1 = disciplinaRepository.save(new Disciplina("Programação", 60, curso, professor));
         disciplina2 = disciplinaRepository.save(new Disciplina("Banco de Dados", 60, curso, professor));
+        periodoInscricaoRepository.save(new PeriodoInscricao(
+                "2026.1", LocalDate.now().minusDays(1), LocalDate.now().plusDays(1)));
     }
 
     @Test
@@ -156,6 +165,59 @@ class MatriculaControllerTest {
         mockMvc.perform(post("/api/matriculas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson(segundoAluno.getId(), List.of(disciplina1.getId()), List.of())))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void deveCancelarMatriculaDuranteJanelaEConsultarEstado() throws Exception {
+        String body = requestJson(aluno.getId(), List.of(disciplina1.getId()), List.of());
+        String response = mockMvc.perform(post("/api/matriculas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String id = com.fasterxml.jackson.databind.json.JsonMapper.builder()
+                .build().readTree(response).get("id").asText();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete("/api/matriculas/{id}", id))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/matriculas/{id}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELADA"))
+                .andExpect(jsonPath("$.dataCancelamento").isNotEmpty())
+                .andExpect(jsonPath("$.disciplinas").isEmpty());
+    }
+
+    @Test
+    void naoDeveCancelarMatriculaForaDaJanelaDeInscricao() throws Exception {
+        String response = mockMvc.perform(post("/api/matriculas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson(aluno.getId(), List.of(disciplina1.getId()), List.of())))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String id = com.fasterxml.jackson.databind.json.JsonMapper.builder()
+                .build().readTree(response).get("id").asText();
+
+        PeriodoInscricao periodo = periodoInscricaoRepository.findByPeriodo("2026.1").orElseThrow();
+        periodo.atualizarDatas(LocalDate.now().minusDays(5), LocalDate.now().minusDays(1));
+        periodoInscricaoRepository.save(periodo);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete("/api/matriculas/{id}", id))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void deveRejeitarNovaMatriculaForaDaJanelaDeInscricao() throws Exception {
+        PeriodoInscricao periodo = periodoInscricaoRepository.findByPeriodo("2026.1").orElseThrow();
+        periodo.atualizarDatas(LocalDate.now().plusDays(1), LocalDate.now().plusDays(5));
+        periodoInscricaoRepository.save(periodo);
+
+        mockMvc.perform(post("/api/matriculas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson(aluno.getId(), List.of(disciplina1.getId()), List.of())))
                 .andExpect(status().isConflict());
     }
 

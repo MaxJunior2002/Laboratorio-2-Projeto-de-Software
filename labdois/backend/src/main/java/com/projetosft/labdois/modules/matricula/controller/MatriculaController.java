@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,5 +36,11 @@ public class MatriculaController {
     @GetMapping("/{id}")
     public MatriculaResponse buscar(@PathVariable UUID id) {
         return MatriculaResponse.from(matriculaService.buscar(id));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> cancelar(@PathVariable UUID id) {
+        matriculaService.cancelar(id);
+        return ResponseEntity.noContent().build();
     }
 }

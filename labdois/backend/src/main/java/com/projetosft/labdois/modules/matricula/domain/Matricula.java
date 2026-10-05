@@ -5,6 +5,9 @@ import com.projetosft.labdois.modules.disciplina.domain.Disciplina;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -32,6 +35,12 @@ public class Matricula {
 
     private LocalDate data;
 
+    private LocalDate dataCancelamento;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatusMatricula status = StatusMatricula.ATIVA;
+
     @ManyToOne(optional = false)
     private Aluno aluno;
 
@@ -58,6 +67,11 @@ public class Matricula {
     }
 
     public void cancelar() {
+        if (status == StatusMatricula.CANCELADA) {
+            throw new IllegalStateException("A matrícula já foi cancelada.");
+        }
+        status = StatusMatricula.CANCELADA;
+        dataCancelamento = LocalDate.now();
         disciplinas.clear();
     }
 
@@ -79,6 +93,14 @@ public class Matricula {
 
     public void setData(LocalDate data) {
         this.data = data;
+    }
+
+    public LocalDate getDataCancelamento() {
+        return dataCancelamento;
+    }
+
+    public StatusMatricula getStatus() {
+        return status;
     }
 
     public int getTotalObrigatorias() {

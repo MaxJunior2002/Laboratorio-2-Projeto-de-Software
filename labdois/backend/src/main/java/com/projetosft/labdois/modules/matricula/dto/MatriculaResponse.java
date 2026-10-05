@@ -1,6 +1,7 @@
 package com.projetosft.labdois.modules.matricula.dto;
 
 import com.projetosft.labdois.modules.matricula.domain.Matricula;
+import com.projetosft.labdois.modules.matricula.domain.StatusMatricula;
 import com.projetosft.labdois.modules.matricula.domain.TipoDisciplinaMatricula;
 
 import java.time.LocalDate;
@@ -12,6 +13,8 @@ public record MatriculaResponse(
         UUID alunoId,
         String periodo,
         LocalDate data,
+        LocalDate dataCancelamento,
+        StatusMatricula status,
         List<DisciplinaSelecionada> disciplinas,
         int totalObrigatorias,
         int totalOptativas
@@ -29,6 +32,8 @@ public record MatriculaResponse(
                 matricula.getAluno().getId(),
                 matricula.getPeriodo(),
                 matricula.getData(),
+                matricula.getDataCancelamento(),
+                matricula.getStatus(),
                 disciplinas,
                 matricula.getTotalObrigatorias(),
                 matricula.getTotalOptativas());
