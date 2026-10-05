@@ -1,5 +1,6 @@
 package com.projetosft.labdois.modules.matricula.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -15,10 +16,12 @@ public class CriarMatriculaRequest {
     private String periodo;
 
     @NotNull
-    private List<UUID> disciplinasObrigatorias;
+    @JsonAlias("disciplinasObrigatorias")
+    private List<UUID> ofertasObrigatorias;
 
     @NotNull
-    private List<UUID> disciplinasOptativas;
+    @JsonAlias("disciplinasOptativas")
+    private List<UUID> ofertasOptativas;
 
     public UUID getAlunoId() {
         return alunoId;
@@ -36,19 +39,19 @@ public class CriarMatriculaRequest {
         this.periodo = periodo;
     }
 
-    public List<UUID> getDisciplinasObrigatorias() {
-        return disciplinasObrigatorias;
+    public List<UUID> getOfertasObrigatorias() {
+        return ofertasObrigatorias;
     }
 
-    public void setDisciplinasObrigatorias(List<UUID> disciplinasObrigatorias) {
-        this.disciplinasObrigatorias = disciplinasObrigatorias;
+    public void setOfertasObrigatorias(List<UUID> ofertasObrigatorias) {
+        this.ofertasObrigatorias = ofertasObrigatorias;
     }
 
-    public List<UUID> getDisciplinasOptativas() {
-        return disciplinasOptativas;
+    public List<UUID> getOfertasOptativas() {
+        return ofertasOptativas;
     }
 
-    public void setDisciplinasOptativas(List<UUID> disciplinasOptativas) {
-        this.disciplinasOptativas = disciplinasOptativas;
+    public void setOfertasOptativas(List<UUID> ofertasOptativas) {
+        this.ofertasOptativas = ofertasOptativas;
     }
 }

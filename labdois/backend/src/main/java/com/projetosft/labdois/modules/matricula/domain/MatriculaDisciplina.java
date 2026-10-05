@@ -1,6 +1,6 @@
 package com.projetosft.labdois.modules.matricula.domain;
 
-import com.projetosft.labdois.modules.disciplina.domain.Disciplina;
+import com.projetosft.labdois.modules.disciplina.domain.OfertaDisciplina;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -18,7 +18,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "matricula_disciplina_selecionadas", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"matricula_id", "disciplina_id"})
+        @UniqueConstraint(columnNames = {"matricula_id", "oferta_id"})
 })
 public class MatriculaDisciplina {
 
@@ -31,8 +31,8 @@ public class MatriculaDisciplina {
     private Matricula matricula;
 
     @ManyToOne(optional = false, fetch = FetchType.EAGER)
-    @JoinColumn(name = "disciplina_id", nullable = false)
-    private Disciplina disciplina;
+    @JoinColumn(name = "oferta_id", nullable = false)
+    private OfertaDisciplina oferta;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -41,9 +41,9 @@ public class MatriculaDisciplina {
     protected MatriculaDisciplina() {
     }
 
-    public MatriculaDisciplina(Matricula matricula, Disciplina disciplina, TipoDisciplinaMatricula tipo) {
+    public MatriculaDisciplina(Matricula matricula, OfertaDisciplina oferta, TipoDisciplinaMatricula tipo) {
         this.matricula = matricula;
-        this.disciplina = disciplina;
+        this.oferta = oferta;
         this.tipo = tipo;
     }
 
@@ -55,8 +55,8 @@ public class MatriculaDisciplina {
         return matricula;
     }
 
-    public Disciplina getDisciplina() {
-        return disciplina;
+    public OfertaDisciplina getOferta() {
+        return oferta;
     }
 
     public TipoDisciplinaMatricula getTipo() {

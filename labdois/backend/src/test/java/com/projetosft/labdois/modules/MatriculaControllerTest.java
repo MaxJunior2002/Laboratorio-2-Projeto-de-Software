@@ -2,11 +2,14 @@ package com.projetosft.labdois.modules;
 
 import com.projetosft.labdois.modules.aluno.domain.Aluno;
 import com.projetosft.labdois.modules.aluno.repository.AlunoRepository;
+import com.projetosft.labdois.modules.cobranca.repository.NotificacaoCobrancaRepository;
 import com.projetosft.labdois.modules.curso.domain.Curso;
 import com.projetosft.labdois.modules.curso.repository.CursoRepository;
 import com.projetosft.labdois.modules.disciplina.domain.Disciplina;
+import com.projetosft.labdois.modules.disciplina.domain.OfertaDisciplina;
 import com.projetosft.labdois.modules.disciplina.domain.StatusDisciplina;
 import com.projetosft.labdois.modules.disciplina.repository.DisciplinaRepository;
+import com.projetosft.labdois.modules.disciplina.repository.OfertaDisciplinaRepository;
 import com.projetosft.labdois.modules.matricula.repository.MatriculaDisciplinaRepository;
 import com.projetosft.labdois.modules.matricula.repository.MatriculaRepository;
 import com.projetosft.labdois.modules.matricula.domain.PeriodoInscricao;
@@ -47,6 +50,9 @@ class MatriculaControllerTest {
     private DisciplinaRepository disciplinaRepository;
 
     @Autowired
+    private OfertaDisciplinaRepository ofertaDisciplinaRepository;
+
+    @Autowired
     private ProfessorRepository professorRepository;
 
     @Autowired
@@ -56,16 +62,21 @@ class MatriculaControllerTest {
     private MatriculaDisciplinaRepository matriculaDisciplinaRepository;
 
     @Autowired
+    private NotificacaoCobrancaRepository notificacaoCobrancaRepository;
+
+    @Autowired
     private PeriodoInscricaoRepository periodoInscricaoRepository;
 
     private Aluno aluno;
-    private Disciplina disciplina1;
-    private Disciplina disciplina2;
+    private OfertaDisciplina oferta1;
+    private OfertaDisciplina oferta2;
 
     @BeforeEach
     void prepararDados() {
+        notificacaoCobrancaRepository.deleteAll();
         matriculaRepository.deleteAll();
         matriculaDisciplinaRepository.deleteAll();
+        ofertaDisciplinaRepository.deleteAll();
         periodoInscricaoRepository.deleteAll();
         disciplinaRepository.deleteAll();
         alunoRepository.deleteAll();
@@ -76,10 +87,12 @@ class MatriculaControllerTest {
         Curso curso = cursoRepository.save(new Curso("Engenharia de Software", 40));
         Professor professor = professorRepository.save(
                 new Professor("Carlos Lima", "carlos@example.com", "senha", "P-1001"));
-        disciplina1 = disciplinaRepository.save(new Disciplina("Programação", 60, curso, professor));
-        disciplina2 = disciplinaRepository.save(new Disciplina("Banco de Dados", 60, curso, professor));
-        periodoInscricaoRepository.save(new PeriodoInscricao(
+        Disciplina disciplina1 = disciplinaRepository.save(new Disciplina("Programação", 60, curso, professor));
+        Disciplina disciplina2 = disciplinaRepository.save(new Disciplina("Banco de Dados", 60, curso, professor));
+        PeriodoInscricao periodo = periodoInscricaoRepository.save(new PeriodoInscricao(
                 "2026.1", LocalDate.now().minusDays(1), LocalDate.now().plusDays(1)));
+        oferta1 = ofertaDisciplinaRepository.save(new OfertaDisciplina(disciplina1, periodo, professor, 60, 3));
+        oferta2 = ofertaDisciplinaRepository.save(new OfertaDisciplina(disciplina2, periodo, professor, 60, 3));
     }
 
     @Test
@@ -88,8 +101,8 @@ class MatriculaControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson(
                                 aluno.getId(),
-                                List.of(disciplina1.getId()),
-                                List.of(disciplina2.getId()))))
+                                List.of(oferta1.getId()),
+                                List.of(oferta2.getId()))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.alunoId").value(aluno.getId().toString()))
                 .andExpect(jsonPath("$.totalObrigatorias").value(1))
@@ -105,6 +118,28 @@ class MatriculaControllerTest {
         mockMvc.perform(get("/api/matriculas/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.disciplinas.length()").value(2));
+    }
+
+    @Test
+    void deveRegistrarNotificacaoSimuladaDeCobrancaAoConfirmarMatricula() throws Exception {
+        String response = mockMvc.perform(post("/api/matriculas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson(aluno.getId(), List.of(oferta1.getId()), List.of(oferta2.getId()))))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String id = com.fasterxml.jackson.databind.json.JsonMapper.builder()
+                .build().readTree(response).get("id").asText();
+
+        mockMvc.perform(get("/api/cobrancas/matriculas/{matriculaId}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.matriculaId").value(id))
+                .andExpect(jsonPath("$.alunoId").value(aluno.getId().toString()))
+                .andExpect(jsonPath("$.periodo").value("2026.1"))
+                .andExpect(jsonPath("$.quantidadeDisciplinas").value(2))
+                .andExpect(jsonPath("$.status").value("SOLICITADA"))
+                .andExpect(jsonPath("$.solicitadaEm").isNotEmpty());
     }
 
     @Test
@@ -133,14 +168,14 @@ class MatriculaControllerTest {
         mockMvc.perform(post("/api/matriculas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson(aluno.getId(),
-                                List.of(disciplina1.getId()),
-                                List.of(disciplina1.getId()))))
+                                List.of(oferta1.getId()),
+                                List.of(oferta1.getId()))))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void deveImpedirNovaMatriculaDoAlunoNoMesmoPeriodo() throws Exception {
-        String body = requestJson(aluno.getId(), List.of(disciplina1.getId()), List.of());
+        String body = requestJson(aluno.getId(), List.of(oferta1.getId()), List.of());
         mockMvc.perform(post("/api/matriculas").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated());
         mockMvc.perform(post("/api/matriculas").contentType(MediaType.APPLICATION_JSON).content(body))
@@ -149,28 +184,28 @@ class MatriculaControllerTest {
 
     @Test
     void deveEncerrarDisciplinaAoAtingirCapacidade() throws Exception {
-        disciplina1.setCapacidadeMaxima(1);
-        disciplinaRepository.save(disciplina1);
+        oferta1.setCapacidadeMaxima(1);
+        ofertaDisciplinaRepository.save(oferta1);
 
         mockMvc.perform(post("/api/matriculas")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestJson(aluno.getId(), List.of(disciplina1.getId()), List.of())))
+                        .content(requestJson(aluno.getId(), List.of(oferta1.getId()), List.of())))
                 .andExpect(status().isCreated());
 
         org.junit.jupiter.api.Assertions.assertEquals(StatusDisciplina.ENCERRADA,
-                disciplinaRepository.findById(disciplina1.getId()).orElseThrow().getStatus());
+                ofertaDisciplinaRepository.findById(oferta1.getId()).orElseThrow().getStatus());
 
         Aluno segundoAluno = alunoRepository.save(
                 new Aluno("Bruno Lima", "bruno@example.com", "senha", "2026002"));
         mockMvc.perform(post("/api/matriculas")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestJson(segundoAluno.getId(), List.of(disciplina1.getId()), List.of())))
+                        .content(requestJson(segundoAluno.getId(), List.of(oferta1.getId()), List.of())))
                 .andExpect(status().isConflict());
     }
 
     @Test
     void deveCancelarMatriculaDuranteJanelaEConsultarEstado() throws Exception {
-        String body = requestJson(aluno.getId(), List.of(disciplina1.getId()), List.of());
+        String body = requestJson(aluno.getId(), List.of(oferta1.getId()), List.of());
         String response = mockMvc.perform(post("/api/matriculas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
@@ -188,13 +223,17 @@ class MatriculaControllerTest {
                 .andExpect(jsonPath("$.status").value("CANCELADA"))
                 .andExpect(jsonPath("$.dataCancelamento").isNotEmpty())
                 .andExpect(jsonPath("$.disciplinas").isEmpty());
+        mockMvc.perform(get("/api/cobrancas/matriculas/{matriculaId}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELADA"))
+                .andExpect(jsonPath("$.quantidadeDisciplinas").value(1));
     }
 
     @Test
     void naoDeveCancelarMatriculaForaDaJanelaDeInscricao() throws Exception {
         String response = mockMvc.perform(post("/api/matriculas")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestJson(aluno.getId(), List.of(disciplina1.getId()), List.of())))
+                        .content(requestJson(aluno.getId(), List.of(oferta1.getId()), List.of())))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         String id = com.fasterxml.jackson.databind.json.JsonMapper.builder()
@@ -217,7 +256,7 @@ class MatriculaControllerTest {
 
         mockMvc.perform(post("/api/matriculas")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestJson(aluno.getId(), List.of(disciplina1.getId()), List.of())))
+                        .content(requestJson(aluno.getId(), List.of(oferta1.getId()), List.of())))
                 .andExpect(status().isConflict());
     }
 
@@ -229,7 +268,7 @@ class MatriculaControllerTest {
                 .map(id -> "\"" + id + "\"")
                 .collect(java.util.stream.Collectors.joining(","));
         return """
-                {"alunoId":"%s","periodo":"2026.1","disciplinasObrigatorias":[%s],"disciplinasOptativas":[%s]}
+                {"alunoId":"%s","periodo":"2026.1","ofertasObrigatorias":[%s],"ofertasOptativas":[%s]}
                 """.formatted(alunoId, obrigatoriasJson, optativasJson);
     }
 }

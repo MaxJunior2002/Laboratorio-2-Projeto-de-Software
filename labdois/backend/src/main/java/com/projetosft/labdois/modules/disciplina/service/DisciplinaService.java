@@ -67,7 +67,7 @@ public class DisciplinaService {
 
     public void excluir(UUID id) {
         Disciplina disciplina = buscar(id);
-        if (matriculaRepository.existsByDisciplinas_Disciplina_Id(id)) {
+        if (matriculaRepository.existsByDisciplinas_Oferta_Disciplina_Id(id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Não é possível excluir uma disciplina vinculada a matrículas.");
         }

@@ -1,7 +1,7 @@
 package com.projetosft.labdois.modules.matricula.domain;
 
 import com.projetosft.labdois.modules.aluno.domain.Aluno;
-import com.projetosft.labdois.modules.disciplina.domain.Disciplina;
+import com.projetosft.labdois.modules.disciplina.domain.OfertaDisciplina;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -56,8 +56,8 @@ public class Matricula {
         this.aluno = aluno;
     }
 
-    public void adicionarDisciplina(Disciplina disciplina, TipoDisciplinaMatricula tipo) {
-        disciplinas.add(new MatriculaDisciplina(this, disciplina, tipo));
+    public void adicionarDisciplina(OfertaDisciplina oferta, TipoDisciplinaMatricula tipo) {
+        disciplinas.add(new MatriculaDisciplina(this, oferta, tipo));
     }
 
     public void confirmar() {

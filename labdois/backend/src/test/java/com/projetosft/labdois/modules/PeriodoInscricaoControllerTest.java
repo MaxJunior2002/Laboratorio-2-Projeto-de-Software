@@ -5,8 +5,10 @@ import com.projetosft.labdois.modules.aluno.repository.AlunoRepository;
 import com.projetosft.labdois.modules.curso.domain.Curso;
 import com.projetosft.labdois.modules.curso.repository.CursoRepository;
 import com.projetosft.labdois.modules.disciplina.domain.Disciplina;
+import com.projetosft.labdois.modules.disciplina.domain.OfertaDisciplina;
 import com.projetosft.labdois.modules.disciplina.domain.StatusDisciplina;
 import com.projetosft.labdois.modules.disciplina.repository.DisciplinaRepository;
+import com.projetosft.labdois.modules.disciplina.repository.OfertaDisciplinaRepository;
 import com.projetosft.labdois.modules.matricula.domain.Matricula;
 import com.projetosft.labdois.modules.matricula.domain.PeriodoInscricao;
 import com.projetosft.labdois.modules.matricula.domain.TipoDisciplinaMatricula;
@@ -51,6 +53,9 @@ class PeriodoInscricaoControllerTest {
     private DisciplinaRepository disciplinaRepository;
 
     @Autowired
+    private OfertaDisciplinaRepository ofertaDisciplinaRepository;
+
+    @Autowired
     private AlunoRepository alunoRepository;
 
     @Autowired
@@ -63,6 +68,7 @@ class PeriodoInscricaoControllerTest {
     void limparPeriodos() {
         matriculaRepository.deleteAll();
         matriculaDisciplinaRepository.deleteAll();
+        ofertaDisciplinaRepository.deleteAll();
         disciplinaRepository.deleteAll();
         alunoRepository.deleteAll();
         professorRepository.deleteAll();
@@ -120,13 +126,17 @@ class PeriodoInscricaoControllerTest {
 
     @Test
     void deveAtivarDisciplinasComTresAlunosECancelarAsDemaisAoEncerrar() throws Exception {
-        periodoInscricaoRepository.save(new PeriodoInscricao(
+        PeriodoInscricao periodo = periodoInscricaoRepository.save(new PeriodoInscricao(
                 "2026.1", LocalDate.of(2020, 1, 1), LocalDate.of(2020, 6, 30)));
         Curso curso = cursoRepository.save(new Curso("Engenharia de Software", 40));
         Professor professor = professorRepository.save(
                 new Professor("Carlos Lima", "carlos@example.com", "senha", "P-1001"));
-        Disciplina ativa = disciplinaRepository.save(new Disciplina("Programação", 60, curso, professor));
-        Disciplina cancelada = disciplinaRepository.save(new Disciplina("Banco de Dados", 60, curso, professor));
+        Disciplina disciplinaAtiva = disciplinaRepository.save(new Disciplina("Programação", 60, curso, professor));
+        Disciplina disciplinaCancelada = disciplinaRepository.save(new Disciplina("Banco de Dados", 60, curso, professor));
+        OfertaDisciplina ativa = ofertaDisciplinaRepository.save(
+                new OfertaDisciplina(disciplinaAtiva, periodo, professor, 60, 3));
+        OfertaDisciplina cancelada = ofertaDisciplinaRepository.save(
+                new OfertaDisciplina(disciplinaCancelada, periodo, professor, 60, 3));
 
         java.util.List<Aluno> alunosAtivos = criarMatriculas(ativa, 3);
         java.util.List<Aluno> alunosCancelados = criarMatriculas(cancelada, 2);
@@ -138,26 +148,30 @@ class PeriodoInscricaoControllerTest {
                 .andExpect(jsonPath("$.disciplinasCanceladas").value(1));
 
         org.junit.jupiter.api.Assertions.assertEquals(StatusDisciplina.ATIVA,
-                disciplinaRepository.findById(ativa.getId()).orElseThrow().getStatus());
+                ofertaDisciplinaRepository.findById(ativa.getId()).orElseThrow().getStatus());
         org.junit.jupiter.api.Assertions.assertEquals(StatusDisciplina.CANCELADA,
-                disciplinaRepository.findById(cancelada.getId()).orElseThrow().getStatus());
+                ofertaDisciplinaRepository.findById(cancelada.getId()).orElseThrow().getStatus());
         org.junit.jupiter.api.Assertions.assertTrue(
                 periodoInscricaoRepository.findByPeriodo("2026.1").orElseThrow().isEncerrado());
 
-        periodoInscricaoRepository.save(new PeriodoInscricao(
+        PeriodoInscricao periodoSeguinte = periodoInscricaoRepository.save(new PeriodoInscricao(
                 "2026.2", LocalDate.now().minusDays(1), LocalDate.now().plusDays(1)));
+        OfertaDisciplina ofertaAtivaNoProximoPeriodo = ofertaDisciplinaRepository.save(
+                new OfertaDisciplina(ativa.getDisciplina(), periodoSeguinte, professor, 60, 3));
+        OfertaDisciplina ofertaCanceladaNoProximoPeriodo = ofertaDisciplinaRepository.save(
+                new OfertaDisciplina(cancelada.getDisciplina(), periodoSeguinte, professor, 60, 3));
         mockMvc.perform(post("/api/matriculas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"alunoId":"%s","periodo":"2026.2","disciplinasObrigatorias":["%s"],"disciplinasOptativas":[]}
-                                """.formatted(alunosAtivos.getFirst().getId(), ativa.getId())))
+                                {"alunoId":"%s","periodo":"2026.2","ofertasObrigatorias":["%s"],"ofertasOptativas":[]}
+                                """.formatted(alunosAtivos.getFirst().getId(), ofertaAtivaNoProximoPeriodo.getId())))
                 .andExpect(status().isCreated());
         mockMvc.perform(post("/api/matriculas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"alunoId":"%s","periodo":"2026.2","disciplinasObrigatorias":["%s"],"disciplinasOptativas":[]}
-                                """.formatted(alunosCancelados.getFirst().getId(), cancelada.getId())))
-                .andExpect(status().isConflict());
+                                {"alunoId":"%s","periodo":"2026.2","ofertasObrigatorias":["%s"],"ofertasOptativas":[]}
+                                """.formatted(alunosCancelados.getFirst().getId(), ofertaCanceladaNoProximoPeriodo.getId())))
+                .andExpect(status().isCreated());
     }
 
     @Test
@@ -184,17 +198,17 @@ class PeriodoInscricaoControllerTest {
                 .andExpect(status().isConflict());
     }
 
-    private java.util.List<Aluno> criarMatriculas(Disciplina disciplina, int quantidade) {
+    private java.util.List<Aluno> criarMatriculas(OfertaDisciplina oferta, int quantidade) {
         java.util.List<Aluno> alunos = new java.util.ArrayList<>();
         for (int indice = 0; indice < quantidade; indice++) {
             Aluno aluno = alunoRepository.save(new Aluno(
-                    "Aluno " + disciplina.getNome() + indice,
-                    disciplina.getNome() + indice + "@example.com",
+                    "Aluno " + oferta.getDisciplina().getNome() + indice,
+                    oferta.getDisciplina().getNome() + indice + "@example.com",
                     "senha",
-                    "2026" + disciplina.getNome().hashCode() + indice));
+                    "2026" + oferta.getDisciplina().getNome().hashCode() + indice));
             alunos.add(aluno);
             Matricula matricula = new Matricula("2026.1", LocalDate.now(), aluno);
-            matricula.adicionarDisciplina(disciplina, TipoDisciplinaMatricula.OBRIGATORIA);
+            matricula.adicionarDisciplina(oferta, TipoDisciplinaMatricula.OBRIGATORIA);
             matriculaRepository.save(matricula);
         }
         return alunos;

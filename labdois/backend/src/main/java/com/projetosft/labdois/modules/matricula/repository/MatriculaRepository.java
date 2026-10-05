@@ -10,5 +10,5 @@ public interface MatriculaRepository extends JpaRepository<Matricula, UUID> {
 
     Optional<Matricula> findByAluno_IdAndPeriodo(UUID alunoId, String periodo);
 
-    boolean existsByDisciplinas_Disciplina_Id(UUID disciplinaId);
+    boolean existsByDisciplinas_Oferta_Disciplina_Id(UUID disciplinaId);
 }

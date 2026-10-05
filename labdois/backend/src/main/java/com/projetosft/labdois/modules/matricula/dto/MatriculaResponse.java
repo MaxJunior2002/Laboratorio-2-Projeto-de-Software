@@ -23,8 +23,12 @@ public record MatriculaResponse(
     public static MatriculaResponse from(Matricula matricula) {
         List<DisciplinaSelecionada> disciplinas = matricula.getDisciplinas().stream()
                 .map(item -> new DisciplinaSelecionada(
-                        item.getDisciplina().getId(),
-                        item.getDisciplina().getNome(),
+                        item.getOferta().getId(),
+                        item.getOferta().getDisciplina().getId(),
+                        item.getOferta().getDisciplina().getNome(),
+                        item.getOferta().getProfessor().getId(),
+                        item.getOferta().getProfessor().getNome(),
+                        item.getOferta().getPeriodoInscricao().getPeriodo(),
                         item.getTipo()))
                 .toList();
         return new MatriculaResponse(
@@ -39,6 +43,8 @@ public record MatriculaResponse(
                 matricula.getTotalOptativas());
     }
 
-    public record DisciplinaSelecionada(UUID disciplinaId, String nome, TipoDisciplinaMatricula tipo) {
+    public record DisciplinaSelecionada(
+            UUID ofertaId, UUID disciplinaId, String nome, UUID professorId,
+            String professorNome, String periodo, TipoDisciplinaMatricula tipo) {
     }
 }

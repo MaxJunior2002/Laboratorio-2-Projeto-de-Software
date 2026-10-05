@@ -1,12 +1,8 @@
 package com.projetosft.labdois.modules.disciplina.domain;
 
 import com.projetosft.labdois.modules.curso.domain.Curso;
-import com.projetosft.labdois.modules.matricula.domain.Matricula;
-import com.projetosft.labdois.modules.matricula.domain.MatriculaDisciplina;
 import com.projetosft.labdois.modules.professor.domain.Professor;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -30,13 +26,6 @@ public class Disciplina {
 
     private int cargaHoraria;
 
-    private int capacidadeMaxima = 60;
-
-    private int minimoAlunos = 3;
-
-    @Enumerated(EnumType.STRING)
-    private StatusDisciplina status = StatusDisciplina.ABERTA;
-
     @ManyToOne
     private Curso curso;
 
@@ -44,7 +33,7 @@ public class Disciplina {
     private Professor professor;
 
     @OneToMany(mappedBy = "disciplina")
-    private List<MatriculaDisciplina> matriculas = new ArrayList<>();
+    private List<OfertaDisciplina> ofertas = new ArrayList<>();
 
     protected Disciplina() {
     }
@@ -54,15 +43,6 @@ public class Disciplina {
         this.cargaHoraria = cargaHoraria;
         this.curso = curso;
         this.professor = professor;
-    }
-
-    public boolean verificarAtivacao() {
-        long alunosInscritos = matriculas.stream()
-                .map(MatriculaDisciplina::getMatricula)
-                .map(Matricula::getAluno)
-                .distinct()
-                .count();
-        return alunosInscritos >= minimoAlunos;
     }
 
     public UUID getId() {
@@ -85,30 +65,6 @@ public class Disciplina {
         this.cargaHoraria = cargaHoraria;
     }
 
-    public int getCapacidadeMaxima() {
-        return capacidadeMaxima;
-    }
-
-    public void setCapacidadeMaxima(int capacidadeMaxima) {
-        this.capacidadeMaxima = capacidadeMaxima;
-    }
-
-    public int getMinimoAlunos() {
-        return minimoAlunos;
-    }
-
-    public void setMinimoAlunos(int minimoAlunos) {
-        this.minimoAlunos = minimoAlunos;
-    }
-
-    public StatusDisciplina getStatus() {
-        return status;
-    }
-
-    public void setStatus(StatusDisciplina status) {
-        this.status = status;
-    }
-
     public Curso getCurso() {
         return curso;
     }
@@ -125,7 +81,7 @@ public class Disciplina {
         this.professor = professor;
     }
 
-    public List<MatriculaDisciplina> getMatriculas() {
-        return matriculas;
+    public List<OfertaDisciplina> getOfertas() {
+        return ofertas;
     }
 }

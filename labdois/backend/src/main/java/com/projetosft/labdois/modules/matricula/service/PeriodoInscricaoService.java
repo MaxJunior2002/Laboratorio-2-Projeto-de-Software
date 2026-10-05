@@ -1,8 +1,8 @@
 package com.projetosft.labdois.modules.matricula.service;
 
-import com.projetosft.labdois.modules.disciplina.domain.Disciplina;
+import com.projetosft.labdois.modules.disciplina.domain.OfertaDisciplina;
 import com.projetosft.labdois.modules.disciplina.domain.StatusDisciplina;
-import com.projetosft.labdois.modules.disciplina.repository.DisciplinaRepository;
+import com.projetosft.labdois.modules.disciplina.repository.OfertaDisciplinaRepository;
 import com.projetosft.labdois.modules.matricula.domain.PeriodoInscricao;
 import com.projetosft.labdois.modules.matricula.domain.StatusMatricula;
 import com.projetosft.labdois.modules.matricula.repository.MatriculaDisciplinaRepository;
@@ -19,15 +19,15 @@ import java.util.List;
 public class PeriodoInscricaoService {
 
     private final PeriodoInscricaoRepository periodoInscricaoRepository;
-    private final DisciplinaRepository disciplinaRepository;
+    private final OfertaDisciplinaRepository ofertaRepository;
     private final MatriculaDisciplinaRepository matriculaDisciplinaRepository;
 
     public PeriodoInscricaoService(
             PeriodoInscricaoRepository periodoInscricaoRepository,
-            DisciplinaRepository disciplinaRepository,
+            OfertaDisciplinaRepository ofertaRepository,
             MatriculaDisciplinaRepository matriculaDisciplinaRepository) {
         this.periodoInscricaoRepository = periodoInscricaoRepository;
-        this.disciplinaRepository = disciplinaRepository;
+        this.ofertaRepository = ofertaRepository;
         this.matriculaDisciplinaRepository = matriculaDisciplinaRepository;
     }
 
@@ -90,14 +90,14 @@ public class PeriodoInscricaoService {
 
         int disciplinasAtivadas = 0;
         int disciplinasCanceladas = 0;
-        for (Disciplina disciplina : disciplinaRepository.findAllLocked()) {
-            long alunosInscritos = matriculaDisciplinaRepository.contarAlunosAtivosPorDisciplinaEPeriodo(
-                    disciplina.getId(), periodoInscricao.getPeriodo(), StatusMatricula.ATIVA);
-            if (alunosInscritos >= disciplina.getMinimoAlunos()) {
-                disciplina.setStatus(StatusDisciplina.ATIVA);
+        for (OfertaDisciplina oferta : ofertaRepository.findAllLockedByPeriodo(periodoInscricao.getPeriodo())) {
+            long alunosInscritos = matriculaDisciplinaRepository.contarAlunosAtivosPorOferta(
+                    oferta.getId(), StatusMatricula.ATIVA);
+            if (alunosInscritos >= oferta.getMinimoAlunos()) {
+                oferta.setStatus(StatusDisciplina.ATIVA);
                 disciplinasAtivadas++;
             } else {
-                disciplina.setStatus(StatusDisciplina.CANCELADA);
+                oferta.setStatus(StatusDisciplina.CANCELADA);
                 disciplinasCanceladas++;
             }
         }

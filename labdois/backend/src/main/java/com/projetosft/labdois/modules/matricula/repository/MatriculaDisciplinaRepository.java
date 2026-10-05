@@ -7,21 +7,22 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.UUID;
+import java.util.List;
 
 public interface MatriculaDisciplinaRepository extends JpaRepository<MatriculaDisciplina, UUID> {
 
-    long countByDisciplina_IdAndMatricula_PeriodoAndMatricula_Status(
-            UUID disciplinaId, String periodo, StatusMatricula status);
+    long countByOferta_IdAndMatricula_Status(UUID ofertaId, StatusMatricula status);
+
+    List<MatriculaDisciplina> findByOferta_Professor_IdAndOferta_PeriodoInscricao_PeriodoAndMatricula_Status(
+            UUID professorId, String periodo, StatusMatricula status);
 
     @Query("""
             select count(distinct md.matricula.aluno.id)
             from MatriculaDisciplina md
-            where md.disciplina.id = :disciplinaId
-              and md.matricula.periodo = :periodo
+            where md.oferta.id = :ofertaId
               and md.matricula.status = :status
             """)
-    long contarAlunosAtivosPorDisciplinaEPeriodo(
-            @Param("disciplinaId") UUID disciplinaId,
-            @Param("periodo") String periodo,
+    long contarAlunosAtivosPorOferta(
+            @Param("ofertaId") UUID ofertaId,
             @Param("status") StatusMatricula status);
 }

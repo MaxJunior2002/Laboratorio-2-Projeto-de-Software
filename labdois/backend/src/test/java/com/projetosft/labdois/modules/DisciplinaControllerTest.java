@@ -7,10 +7,14 @@ import com.projetosft.labdois.modules.aluno.repository.AlunoRepository;
 import com.projetosft.labdois.modules.curso.domain.Curso;
 import com.projetosft.labdois.modules.curso.repository.CursoRepository;
 import com.projetosft.labdois.modules.disciplina.domain.Disciplina;
+import com.projetosft.labdois.modules.disciplina.domain.OfertaDisciplina;
 import com.projetosft.labdois.modules.disciplina.repository.DisciplinaRepository;
+import com.projetosft.labdois.modules.disciplina.repository.OfertaDisciplinaRepository;
 import com.projetosft.labdois.modules.matricula.domain.Matricula;
+import com.projetosft.labdois.modules.matricula.domain.PeriodoInscricao;
 import com.projetosft.labdois.modules.matricula.domain.TipoDisciplinaMatricula;
 import com.projetosft.labdois.modules.matricula.repository.MatriculaRepository;
+import com.projetosft.labdois.modules.matricula.repository.PeriodoInscricaoRepository;
 import com.projetosft.labdois.modules.professor.domain.Professor;
 import com.projetosft.labdois.modules.professor.repository.ProfessorRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +49,12 @@ class DisciplinaControllerTest {
     private DisciplinaRepository disciplinaRepository;
 
     @Autowired
+    private OfertaDisciplinaRepository ofertaDisciplinaRepository;
+
+    @Autowired
+    private PeriodoInscricaoRepository periodoInscricaoRepository;
+
+    @Autowired
     private ProfessorRepository professorRepository;
 
     @Autowired
@@ -58,7 +68,9 @@ class DisciplinaControllerTest {
     @BeforeEach
     void limparDados() {
         matriculaRepository.deleteAll();
+        ofertaDisciplinaRepository.deleteAll();
         disciplinaRepository.deleteAll();
+        periodoInscricaoRepository.deleteAll();
         alunoRepository.deleteAll();
         professorRepository.deleteAll();
         cursoRepository.deleteAll();
@@ -76,8 +88,7 @@ class DisciplinaControllerTest {
                 .andExpect(jsonPath("$[0].nome").value("Programação"))
                 .andExpect(jsonPath("$[0].cursoNome").value("Engenharia de Software"))
                 .andExpect(jsonPath("$[0].professorNome").value("Ana Souza"))
-                .andExpect(jsonPath("$[0].capacidadeMaxima").value(60))
-                .andExpect(jsonPath("$[0].status").value("ABERTA"));
+                .andExpect(jsonPath("$[0].cargaHoraria").value(60));
 
         mockMvc.perform(get("/api/disciplinas/{id}", id))
                 .andExpect(status().isOk())
@@ -122,8 +133,12 @@ class DisciplinaControllerTest {
         Professor professor = criarProfessor("Ana Souza", "ana@example.com");
         Aluno aluno = alunoRepository.save(new Aluno("Caio Silva", "caio@example.com", "senha", "2025001"));
         Disciplina disciplina = disciplinaRepository.save(new Disciplina("Programação", 60, curso, professor));
+        PeriodoInscricao periodo = periodoInscricaoRepository.save(new PeriodoInscricao(
+                "2026.1", LocalDate.now().minusDays(1), LocalDate.now().plusDays(1)));
+        OfertaDisciplina oferta = ofertaDisciplinaRepository.save(
+                new OfertaDisciplina(disciplina, periodo, professor, 60, 3));
         Matricula matricula = new Matricula("2026.1", LocalDate.now(), aluno);
-        matricula.adicionarDisciplina(disciplina, TipoDisciplinaMatricula.OBRIGATORIA);
+        matricula.adicionarDisciplina(oferta, TipoDisciplinaMatricula.OBRIGATORIA);
         matriculaRepository.save(matricula);
 
         mockMvc.perform(delete("/api/disciplinas/{id}", disciplina.getId()))

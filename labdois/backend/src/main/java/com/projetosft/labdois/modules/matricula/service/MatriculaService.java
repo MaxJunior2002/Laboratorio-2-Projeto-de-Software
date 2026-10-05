@@ -2,9 +2,10 @@ package com.projetosft.labdois.modules.matricula.service;
 
 import com.projetosft.labdois.modules.aluno.domain.Aluno;
 import com.projetosft.labdois.modules.aluno.repository.AlunoRepository;
-import com.projetosft.labdois.modules.disciplina.domain.Disciplina;
+import com.projetosft.labdois.modules.cobranca.service.SimuladorCobrancaService;
+import com.projetosft.labdois.modules.disciplina.domain.OfertaDisciplina;
 import com.projetosft.labdois.modules.disciplina.domain.StatusDisciplina;
-import com.projetosft.labdois.modules.disciplina.repository.DisciplinaRepository;
+import com.projetosft.labdois.modules.disciplina.repository.OfertaDisciplinaRepository;
 import com.projetosft.labdois.modules.matricula.domain.Matricula;
 import com.projetosft.labdois.modules.matricula.domain.StatusMatricula;
 import com.projetosft.labdois.modules.matricula.domain.TipoDisciplinaMatricula;
@@ -32,31 +33,34 @@ public class MatriculaService {
     private final MatriculaRepository matriculaRepository;
     private final MatriculaDisciplinaRepository matriculaDisciplinaRepository;
     private final AlunoRepository alunoRepository;
-    private final DisciplinaRepository disciplinaRepository;
+    private final OfertaDisciplinaRepository ofertaRepository;
     private final PeriodoInscricaoService periodoInscricaoService;
+    private final SimuladorCobrancaService simuladorCobrancaService;
 
     public MatriculaService(
             MatriculaRepository matriculaRepository,
             MatriculaDisciplinaRepository matriculaDisciplinaRepository,
             AlunoRepository alunoRepository,
-            DisciplinaRepository disciplinaRepository,
-            PeriodoInscricaoService periodoInscricaoService) {
+            OfertaDisciplinaRepository ofertaRepository,
+            PeriodoInscricaoService periodoInscricaoService,
+            SimuladorCobrancaService simuladorCobrancaService) {
         this.matriculaRepository = matriculaRepository;
         this.matriculaDisciplinaRepository = matriculaDisciplinaRepository;
         this.alunoRepository = alunoRepository;
-        this.disciplinaRepository = disciplinaRepository;
+        this.ofertaRepository = ofertaRepository;
         this.periodoInscricaoService = periodoInscricaoService;
+        this.simuladorCobrancaService = simuladorCobrancaService;
     }
 
     @Transactional
     public Matricula criar(CriarMatriculaRequest request) {
         List<UUID> obrigatorias = validarLista(
-                request.getDisciplinasObrigatorias(), Matricula.MAX_OBRIGATORIAS, "obrigatórias");
+                request.getOfertasObrigatorias(), Matricula.MAX_OBRIGATORIAS, "obrigatórias");
         List<UUID> optativas = validarLista(
-                request.getDisciplinasOptativas(), Matricula.MAX_OPTATIVAS, "optativas");
+                request.getOfertasOptativas(), Matricula.MAX_OPTATIVAS, "optativas");
         if (obrigatorias.isEmpty() && optativas.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "A matrícula precisa conter ao menos uma disciplina.");
+                    "A matrícula precisa conter ao menos uma oferta de disciplina.");
         }
         if (request.getPeriodo() == null || request.getPeriodo().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Período letivo é obrigatório.");
@@ -65,7 +69,7 @@ public class MatriculaService {
                 || new HashSet<>(optativas).size() != optativas.size()
                 || !Collections.disjoint(obrigatorias, optativas)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Uma disciplina não pode ser selecionada mais de uma vez.");
+                    "Uma oferta não pode ser selecionada mais de uma vez.");
         }
 
         Aluno aluno = alunoRepository.findById(request.getAlunoId())
@@ -77,52 +81,56 @@ public class MatriculaService {
                     "O aluno já possui uma matrícula nesse período.");
         }
 
-        List<UUID> idsOrdenados = new ArrayList<>();
-        idsOrdenados.addAll(obrigatorias);
-        idsOrdenados.addAll(optativas);
-        idsOrdenados.sort(UUID::compareTo);
-        Map<UUID, Disciplina> disciplinas = idsOrdenados.stream()
-                .map(id -> disciplinaRepository.findLockedById(id)
+        List<UUID> ofertaIds = new ArrayList<>();
+        ofertaIds.addAll(obrigatorias);
+        ofertaIds.addAll(optativas);
+        ofertaIds.sort(UUID::compareTo);
+        Map<UUID, OfertaDisciplina> ofertas = ofertaIds.stream()
+                .map(id -> ofertaRepository.findLockedById(id)
                         .orElseThrow(() -> new ResponseStatusException(
-                                HttpStatus.NOT_FOUND, "Disciplina não encontrada: " + id)))
-                .collect(Collectors.toMap(Disciplina::getId, Function.identity()));
+                                HttpStatus.NOT_FOUND, "Oferta de disciplina não encontrada: " + id)))
+                .collect(Collectors.toMap(OfertaDisciplina::getId, Function.identity()));
 
-        for (UUID disciplinaId : idsOrdenados) {
-            Disciplina disciplina = disciplinas.get(disciplinaId);
-            if (disciplina.getStatus() != StatusDisciplina.ABERTA
-                    && disciplina.getStatus() != StatusDisciplina.ATIVA) {
+        for (UUID ofertaId : ofertaIds) {
+            OfertaDisciplina oferta = ofertas.get(ofertaId);
+            if (!oferta.getPeriodoInscricao().getPeriodo().equals(periodo)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "A oferta não pertence ao período letivo informado.");
+            }
+            if (oferta.getStatus() != StatusDisciplina.ABERTA
+                    && oferta.getStatus() != StatusDisciplina.ATIVA) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "A disciplina não está recebendo matrículas: " + disciplina.getNome());
+                        "A oferta não está recebendo matrículas: " + oferta.getDisciplina().getNome());
             }
             long matriculados = matriculaDisciplinaRepository
-                    .countByDisciplina_IdAndMatricula_PeriodoAndMatricula_Status(
-                            disciplinaId, periodo, StatusMatricula.ATIVA);
-            if (matriculados >= disciplina.getCapacidadeMaxima()) {
+                    .countByOferta_IdAndMatricula_Status(ofertaId, StatusMatricula.ATIVA);
+            if (matriculados >= oferta.getCapacidadeMaxima()) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "A disciplina atingiu a capacidade máxima: " + disciplina.getNome());
+                        "A oferta atingiu a capacidade máxima: " + oferta.getDisciplina().getNome());
             }
         }
 
         Matricula matricula = new Matricula(periodo, LocalDate.now(), aluno);
         obrigatorias.forEach(id -> matricula.adicionarDisciplina(
-                disciplinas.get(id), TipoDisciplinaMatricula.OBRIGATORIA));
+                ofertas.get(id), TipoDisciplinaMatricula.OBRIGATORIA));
         optativas.forEach(id -> matricula.adicionarDisciplina(
-                disciplinas.get(id), TipoDisciplinaMatricula.OPTATIVA));
+                ofertas.get(id), TipoDisciplinaMatricula.OPTATIVA));
         matricula.confirmar();
 
         Matricula salva = matriculaRepository.save(matricula);
-        for (UUID disciplinaId : idsOrdenados) {
-            Disciplina disciplina = disciplinas.get(disciplinaId);
+        simuladorCobrancaService.solicitar(salva);
+        for (UUID ofertaId : ofertaIds) {
+            OfertaDisciplina oferta = ofertas.get(ofertaId);
             long matriculados = matriculaDisciplinaRepository
-                    .countByDisciplina_IdAndMatricula_PeriodoAndMatricula_Status(
-                            disciplinaId, periodo, StatusMatricula.ATIVA);
-            if (matriculados >= disciplina.getCapacidadeMaxima()) {
-                disciplina.setStatus(StatusDisciplina.ENCERRADA);
+                    .countByOferta_IdAndMatricula_Status(ofertaId, StatusMatricula.ATIVA);
+            if (matriculados >= oferta.getCapacidadeMaxima()) {
+                oferta.setStatus(StatusDisciplina.ENCERRADA);
             }
         }
         return salva;
     }
 
+    @Transactional(readOnly = true)
     public Matricula buscar(UUID id) {
         return matriculaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Matrícula não encontrada."));
@@ -135,22 +143,22 @@ public class MatriculaService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "A matrícula já foi cancelada.");
         }
         periodoInscricaoService.validarAberto(matricula.getPeriodo(), LocalDate.now());
-        List<UUID> disciplinaIds = matricula.getDisciplinas().stream()
-                .map(item -> item.getDisciplina().getId())
+        List<UUID> ofertaIds = matricula.getDisciplinas().stream()
+                .map(item -> item.getOferta().getId())
                 .sorted()
                 .toList();
         matricula.cancelar();
         matriculaRepository.save(matricula);
-        for (UUID disciplinaId : disciplinaIds) {
-            Disciplina disciplina = disciplinaRepository.findLockedById(disciplinaId)
+        simuladorCobrancaService.cancelar(matricula.getId());
+        for (UUID ofertaId : ofertaIds) {
+            OfertaDisciplina oferta = ofertaRepository.findLockedById(ofertaId)
                     .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.NOT_FOUND, "Disciplina não encontrada: " + disciplinaId));
+                            HttpStatus.NOT_FOUND, "Oferta de disciplina não encontrada: " + ofertaId));
             long matriculados = matriculaDisciplinaRepository
-                    .countByDisciplina_IdAndMatricula_PeriodoAndMatricula_Status(
-                            disciplinaId, matricula.getPeriodo(), StatusMatricula.ATIVA);
-            if (disciplina.getStatus() == StatusDisciplina.ENCERRADA
-                    && matriculados < disciplina.getCapacidadeMaxima()) {
-                disciplina.setStatus(StatusDisciplina.ABERTA);
+                    .countByOferta_IdAndMatricula_Status(ofertaId, StatusMatricula.ATIVA);
+            if (oferta.getStatus() == StatusDisciplina.ENCERRADA
+                    && matriculados < oferta.getCapacidadeMaxima()) {
+                oferta.setStatus(StatusDisciplina.ABERTA);
             }
         }
     }
@@ -158,14 +166,14 @@ public class MatriculaService {
     private List<UUID> validarLista(List<UUID> ids, int limite, String categoria) {
         if (ids == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "A lista de disciplinas " + categoria + " é obrigatória.");
+                    "A lista de ofertas " + categoria + " é obrigatória.");
         }
         if (ids.size() > limite) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "O limite é de " + limite + " disciplinas " + categoria + ".");
+                    "O limite é de " + limite + " ofertas " + categoria + ".");
         }
         if (ids.stream().anyMatch(id -> id == null)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Os identificadores das disciplinas são obrigatórios.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Os identificadores das ofertas são obrigatórios.");
         }
         return ids;
     }
