@@ -2,6 +2,7 @@ package com.projetosft.labdois.modules;
 
 import com.projetosft.labdois.modules.aluno.domain.Aluno;
 import com.projetosft.labdois.modules.aluno.repository.AlunoRepository;
+import com.projetosft.labdois.modules.cobranca.repository.NotificacaoCobrancaRepository;
 import com.projetosft.labdois.modules.curso.domain.Curso;
 import com.projetosft.labdois.modules.curso.repository.CursoRepository;
 import com.projetosft.labdois.modules.disciplina.domain.Disciplina;
@@ -63,8 +64,12 @@ class OfertaDisciplinaControllerTest {
     @Autowired
     private PeriodoInscricaoRepository periodoRepository;
 
+    @Autowired
+    private NotificacaoCobrancaRepository notificacaoCobrancaRepository;
+
     @BeforeEach
     void limparDados() {
+        notificacaoCobrancaRepository.deleteAll();
         matriculaRepository.deleteAll();
         matriculaDisciplinaRepository.deleteAll();
         ofertaRepository.deleteAll();

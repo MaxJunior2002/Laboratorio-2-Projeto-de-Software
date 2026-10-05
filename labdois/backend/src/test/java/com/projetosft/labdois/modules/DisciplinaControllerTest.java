@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.projetosft.labdois.modules.aluno.domain.Aluno;
 import com.projetosft.labdois.modules.aluno.repository.AlunoRepository;
+import com.projetosft.labdois.modules.cobranca.repository.NotificacaoCobrancaRepository;
 import com.projetosft.labdois.modules.curso.domain.Curso;
 import com.projetosft.labdois.modules.curso.repository.CursoRepository;
 import com.projetosft.labdois.modules.disciplina.domain.Disciplina;
@@ -63,10 +64,14 @@ class DisciplinaControllerTest {
     @Autowired
     private MatriculaRepository matriculaRepository;
 
+    @Autowired
+    private NotificacaoCobrancaRepository notificacaoCobrancaRepository;
+
     private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
     @BeforeEach
     void limparDados() {
+        notificacaoCobrancaRepository.deleteAll();
         matriculaRepository.deleteAll();
         ofertaDisciplinaRepository.deleteAll();
         disciplinaRepository.deleteAll();
